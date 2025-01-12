@@ -5,32 +5,8 @@
 #include <unistd.h>
 #include <string.h>
 #include "libbootkit/libbootkit.h"
-
-int str2hex(size_t buflen, uint8_t *buf, const char *str) {
-    unsigned char *ptr = buf;
-    int seq = -1;
-    while (buflen > 0) {
-        int nibble = *str++;
-        if (nibble >= '0' && nibble <= '9') {
-            nibble -= '0';
-        } else {
-            nibble |= 0x20;
-            if (nibble < 'a' || nibble > 'f') {
-                break;
-            }
-            nibble -= 'a' - 10;
-        }
-        if (seq >= 0) {
-            *buf++ = (seq << 4) | nibble;
-            buflen--;
-            seq = -1;
-        } else {
-            seq = nibble;
-        }
-    }
-
-    return buf - ptr;
-}
+#include "batch.h"
+#include "utils.h"
 
 void print_usb_serial(irecv_client_t client) {
     const struct irecv_device_info *info = irecv_get_device_info(client);
@@ -43,8 +19,14 @@ void print_usage(const char *program_name) {
     printf("\tboot <bootloader>\n");
     printf("\tkbag <kbag>\n");
     printf("\tdemote\n");
-    /* doesn't seem to actually work on old platforms */
-    // printf("\tundemote\n");
+    printf("\tbatch <input> <output>\n");
+
+    printf("\nfor batch KBAG processing, you must input a text file in following format:\n\n");
+    printf("\tFIRMWARE0 FILE0 KBAG\n");
+    printf("\t...\n");
+    printf("\tFIRMWAREn FILEn KBAG\n");
+
+    printf("\nin return you'll get the same structure, but with IV+key pair appended to each entry\n");
 
     printf("\nsupported platforms:\n\t");
 
@@ -58,12 +40,33 @@ void print_usage(const char *program_name) {
     printf("\n");
 }
 
+static bool kbag_len_validate(size_t len, uint16_t cpid) {
+    bool haywire = cpid == 0x8747;
+
+    if (len == KBAG_LEN_128) {
+        if (!haywire) {
+            printf("128-bit KBAG provided for non-Haywire target\n");
+            return false;
+        }
+    } else if (len == KBAG_LEN_256) {
+        if (haywire) {
+            printf("256-bit KBAG provided for Haywire target\n");
+            return false;
+        }
+    } else {
+        printf("KBAG is neither 256-bit nor 128?!\n");
+        return false;
+    }
+
+    return true;
+}
+
 enum {
     VERB_NONE = -1,
     VERB_BOOT,
     VERB_KBAG,
     VERB_DEMOTE,
-    VERB_UNDEMOTE
+    VERB_BATCH
 };
 
 int main(int argc, char *argv[]) {
@@ -76,8 +79,15 @@ int main(int argc, char *argv[]) {
     bool debug = false;
 
     int fd = -1;
+    int out_fd = -1;
+
     uint8_t *bootloader_buffer = NULL;
     size_t bootloader_size = 0;
+
+    char *batch_input_buffer = NULL;
+    size_t batch_input_size = 0;
+    struct batch_entry *batch_entries = NULL;
+    int batch_entry_count = 0;
 
     uint8_t kbag[KBAG_LEN_256] = { 0 };
     size_t kbag_len = 0;
@@ -102,18 +112,18 @@ int main(int argc, char *argv[]) {
         bootloader_size = lseek(fd, 0, SEEK_END);
         if (!bootloader_size) {
             printf("bootloader is empty?!\n");
-            goto boot_out;
+            goto out;
         }
 
         bootloader_buffer = malloc(bootloader_size);
         if (!bootloader_buffer) {
             printf("out of memory\n");
-            goto boot_out;
+            goto out;
         }
 
         if (pread(fd, bootloader_buffer, bootloader_size, 0) != bootloader_size) {
             printf("failed to read bootloader\n");
-            goto boot_out;
+            goto out;
         }
 
         close(fd);
@@ -146,10 +156,48 @@ int main(int argc, char *argv[]) {
 
     } else if (strcmp(argv[1], "demote") == 0) {
         verb = VERB_DEMOTE;
-    } 
-    // else if (strcmp(argv[1], "undemote") == 0) {
-    //     verb = VERB_UNDEMOTE;
-    // }
+    } else if (strcmp(argv[1], "batch") == 0) {
+        verb = VERB_BATCH;
+
+        if (argc != 4) {
+            goto missing_arg;
+        }
+
+        const char *input  = argv[2];
+
+        fd = open(input, O_RDONLY);
+        if (fd < 0) {
+            printf("failed to open batch input\n");
+            goto out;
+        }
+
+        batch_input_size = lseek(fd, 0, SEEK_END);
+        if (!batch_input_size) {
+            printf("batch input is empty?!\n");
+            goto out;
+        }
+
+        batch_input_buffer = malloc(batch_input_size + 1);
+        if (!batch_input_buffer) {
+            printf("out of memory\n");
+            goto out;
+        }
+
+        if (pread(fd, batch_input_buffer, batch_input_size, 0) != batch_input_size) {
+            printf("failed to read batch input\n");
+            goto out;
+        }
+
+        batch_input_buffer[batch_input_size] = '\0';
+
+        close(fd);
+        fd = -1;
+
+        if (batch_parse(batch_input_buffer, &batch_entries, &batch_entry_count) != 0) {
+            goto out;
+        }
+
+    }
 
     if (verb == VERB_NONE) {
         goto usage;
@@ -175,15 +223,14 @@ int main(int argc, char *argv[]) {
                 ret = dfu_boot_watch(client, bootloader_buffer, bootloader_size, debug);
             }
 
-            goto boot_out;
+            goto out;
         }
 
         case VERB_KBAG: {
             printf("decrypting KBAG...\n");
 
-            if (kbag_len == KBAG_LEN_128 && config->cpid != 0x8747) {
-                printf("128-bit KBAG provided for non-Haywire target\n");
-                return -1;
+            if (!kbag_len_validate(kbag_len, config->cpid)) {
+                goto out;
             }
 
 #define AES_IV_SIZE 0x10
@@ -214,25 +261,77 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        // case VERB_UNDEMOTE: {
-        //     printf("undemoting...\n");
-        //     ret = demote_op(client, config, false);
-        //     break;
-        // }
+        case VERB_BATCH: {
+            out_fd = open(argv[3], O_WRONLY | O_CREAT, 0644);
+            if (out_fd < 0) {
+                printf("failed to create output file\n");
+                goto out;
+            }
+
+            printf("decrypting KBAG batch...\n");
+
+            for (int i = 0; i < batch_entry_count; i++) {
+                struct batch_entry *curr = &batch_entries[i];
+
+                uint8_t kbag[KBAG_LEN_256] = { 0 };
+                int kbag_len = curr->kbag_len;
+
+                memcpy(kbag, curr->kbag, kbag_len);
+
+                if (!kbag_len_validate(kbag_len, config->cpid)) {
+                    goto out;
+                }
+
+                write(out_fd, curr->firmware, strlen(curr->firmware));
+                write(out_fd, " ", 1);
+                write(out_fd, curr->file, strlen(curr->file));
+                write(out_fd, " ", 1);
+
+                char kbag_str[KBAG_LEN_256 * 2 + 1] = { 0 };
+                hex2str(kbag_str, kbag_len, curr->kbag);
+
+                write(out_fd, kbag_str, kbag_len * 2);
+                write(out_fd, " ", 1);
+
+                ret = aes_op(client, config, kbag, kbag_len);
+                if (ret != 0) {
+                    goto out;
+                }
+
+                char key_str[KBAG_LEN_256 * 2 + 1] = { 0 };
+                hex2str(key_str, kbag_len, kbag);
+
+                write(out_fd, key_str, kbag_len * 2);
+                write(out_fd, "\n", 1);
+
+                printf("\rdecrypting: %d/%d", i + 1, batch_entry_count);
+            }
+
+            printf("\n");
+        }
     }
 
-    goto out;
-
-boot_out:
+out:
     if (fd != -1) {
         close(fd);
+    }
+
+    if (out_fd != -1) {
+        close(out_fd);
     }
 
     if (bootloader_buffer) {
         free(bootloader_buffer);
     }
 
-out:
+    if (batch_input_buffer) {
+        free(batch_input_buffer);
+    }
+
+    if (batch_entries) {
+        free(batch_entries);
+    }
+
     if (client) {
         irecv_close(client);
     }

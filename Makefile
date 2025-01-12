@@ -25,6 +25,8 @@ BUILD_PATH = build
 
 SOURCES = \
 	src/main.c \
+	src/batch.c \
+	src/utils.c \
 	lilirecovery/lilirecovery.c \
 	src/libbootkit/boot.c \
 	src/libbootkit/ops.c \

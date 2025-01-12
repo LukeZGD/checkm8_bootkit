@@ -34,6 +34,8 @@ int write32(irecv_client_t client, const rom_config_t *config, uint32_t address,
 
 #define MAX_ARGS 8
 #define AUX_DATA_START  (sizeof(usb_command_t) + sizeof(uint32_t) * MAX_ARGS)
+#define MAX_OUTPUT_LEN  0x400
+
 int execute(irecv_client_t client, const rom_config_t *config, uint8_t *output, size_t output_len, uint32_t address, uint32_t args[MAX_ARGS], uint8_t *aux_data, size_t aux_data_len);
 
 int validate_device(irecv_client_t client);

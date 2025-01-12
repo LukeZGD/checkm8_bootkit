@@ -41,13 +41,44 @@ int validate_device(irecv_client_t client) {
     return 0;
 }
 
+#define ASSERT(cond, label) \
+    do { \
+        if (!(cond)) { \
+            goto label; \
+        } \
+    } while (0)
+
+uint8_t dummy_data[16] = { 0 };
+
 int send_command(irecv_client_t client, unsigned char *command, size_t length) {
     printf("sending command...\n");
 
-    if (request_image_validation(client, false) != 0) {
-        printf("failed to prepare command sending\n");
-        return -1;
+    /* 
+     * I stole this blindly from ipwndfu,
+     * it seems to clear counters without re-entering DFU (?)
+     */
+
+    ASSERT(send_data(client, dummy_data, sizeof(dummy_data)) == 0, preflight_fail);
+    ASSERT(
+        irecv_usb_control_transfer(client, 0x21, 1, 0, 0, NULL, 0, USB_SMALL_TIMEOUT) == 0,
+        preflight_fail
+    );
+
+    uint8_t dummy_status[6];
+
+    for (int i = 0; i < 2; i++) {
+        ASSERT(
+            irecv_usb_control_transfer(client, 0xA1, 3, 0, 0, dummy_status, sizeof(dummy_status), USB_SMALL_TIMEOUT) == sizeof(dummy_status),
+            preflight_fail
+        );
     }
+
+    /* 
+     * ROM seems to advertise 50ms in status response,
+     * but 1ms seems to be actually enough for us
+     */
+    
+    usleep(1 * 1000);
 
     if (send_data(client, command, length) != 0) {
         printf("failed to send command buffer\n");
@@ -55,12 +86,16 @@ int send_command(irecv_client_t client, unsigned char *command, size_t length) {
     }
 
     return 0;
+
+preflight_fail:
+    printf("failed to prepare command sending\n");
+    return -1;
 }
 
 int trigger_command(irecv_client_t client, unsigned char *response, size_t response_length) {
     if (!response_length) {
-        uint8_t dummy_data;
-        return irecv_usb_control_transfer(client, 0xA1, 2, 0xFFFF, 0, (unsigned char*)&dummy_data, sizeof(dummy_data), USB_TIMEOUT);
+        uint8_t dummy_byte = 0;
+        return irecv_usb_control_transfer(client, 0xA1, 2, 0xFFFF, 0, &dummy_byte, sizeof(dummy_byte), USB_TIMEOUT);
     } else {
         return irecv_usb_control_transfer(client, 0xA1, 2, 0xFFFF, 0, (unsigned char*)response, response_length, USB_TIMEOUT);
     }
@@ -165,6 +200,11 @@ int write32(irecv_client_t client, const rom_config_t *config, uint32_t address,
 }
 
 int execute(irecv_client_t client, const rom_config_t *config, uint8_t *output, size_t output_len, uint32_t address, uint32_t args[MAX_ARGS], uint8_t *aux_data, size_t aux_data_len) {
+    if (output_len > MAX_OUTPUT_LEN) {
+        printf("output length is too large\n");
+        return -1;
+    }
+
     struct {
         usb_command_t header;
         uint32_t args[MAX_ARGS];
@@ -190,8 +230,8 @@ int execute(irecv_client_t client, const rom_config_t *config, uint8_t *output, 
 
     struct {
         usb_command_done_t header;
-        uint8_t buffer[0x30];
-    } resp = { 0 };
+        uint8_t buffer[MAX_OUTPUT_LEN];
+    } resp;
 
     trigger_command(client, (uint8_t *)&resp, sizeof(usb_command_done_t) + output_len);
 

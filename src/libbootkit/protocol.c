@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <lilirecovery.h>
 
+#include "log.h"
 #include "config.h"
 #include "dfu.h"
 #include "protocol.h"
@@ -51,7 +52,7 @@ int validate_device(irecv_client_t client) {
 uint8_t dummy_data[16] = { 0 };
 
 int send_command(irecv_client_t client, unsigned char *command, size_t length) {
-    printf("sending command...\n");
+    debug("sending command...\n");
 
     /* 
      * I stole this blindly from ipwndfu,
@@ -125,7 +126,7 @@ int save_command(irecv_client_t client, unsigned char *command, size_t length) {
 }
 
 int read32(irecv_client_t client, const rom_config_t *config, uint32_t address, uint32_t *dest) {
-    printf("reading 32-bits from 0x%x...\n", address);
+    debug("reading 32-bits from 0x%x...\n", address);
 
     struct {
         usb_command_memc_t header;
@@ -163,7 +164,7 @@ int read32(irecv_client_t client, const rom_config_t *config, uint32_t address, 
 }
 
 int write32(irecv_client_t client, const rom_config_t *config, uint32_t address, uint32_t value) {
-    printf("writing 0x%x to 0x%x...\n", value, address);
+    debug("writing 0x%x to 0x%x...\n", value, address);
 
     struct {
         usb_command_memc_t header;

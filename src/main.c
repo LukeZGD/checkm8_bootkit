@@ -15,13 +15,13 @@ void print_usb_serial(irecv_client_t client) {
 
 void print_usage(const char *program_name) {
     printf("usage: %s VERB [args]\n", program_name);
-    printf("where VERB is one of the following:\n");
+    printf("\nwhere VERB is one of the following:\n");
     printf("\tboot <bootloader>\n");
     printf("\tkbag <kbag>\n");
     printf("\tdemote\n");
     printf("\tbatch <input> <output>\n");
 
-    printf("\nfor batch KBAG processing, you must input a text file in following format:\n\n");
+    printf("\nfor batch KBAG processing, you must input a text file in following format:\n");
     printf("\tFIRMWARE0 FILE0 KBAG\n");
     printf("\t...\n");
     printf("\tFIRMWAREn FILEn KBAG\n");
@@ -304,10 +304,14 @@ int main(int argc, char *argv[]) {
                 write(out_fd, key_str, kbag_len * 2);
                 write(out_fd, "\n", 1);
 
-                printf("\rdecrypting: %d/%d", i + 1, batch_entry_count);
+                if (!libbootkit_debug_enabled) {
+                    printf("\rdecrypting: %d/%d", i + 1, batch_entry_count);
+                }
             }
 
-            printf("\n");
+            if (!libbootkit_debug_enabled) {
+                printf("\n");
+            }
         }
     }
 

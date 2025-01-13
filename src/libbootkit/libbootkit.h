@@ -4,5 +4,6 @@
 #include "config.h"
 #include "ops.h"
 #include "boot.h"
+#include "log.h"
 
 #endif

@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <lilirecovery.h>
+
+#include "log.h"
 #include "ops.h"
 #include "protocol.h"
 #include "config.h"
@@ -17,7 +19,7 @@ int demote_op(irecv_client_t client, const rom_config_t *config, bool demote) {
         return -1;
     }
 
-    printf("curr: 0x%08x\n", value);
+    debug("curr: 0x%08x\n", value);
 
     if (demote) {
         if ((value & 0x1) == 0x0) {
@@ -30,7 +32,7 @@ int demote_op(irecv_client_t client, const rom_config_t *config, bool demote) {
         value |= 0x1;
     }
     
-    printf("new:  0x%08x\n", value);
+    debug("new:  0x%08x\n", value);
 
     ret = write32(client, config, config->demotion_reg, value);
     if (ret != 0) {

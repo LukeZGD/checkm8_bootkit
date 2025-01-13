@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <lilirecovery.h>
 
+#include "log.h"
 #include "dfu.h"
 #include "protocol.h"
 #include "config.h"
@@ -34,7 +35,7 @@ typedef struct __attribute__((packed)) {
 } payload_offsets_watch_t;
 
 static unsigned char *construct_payload_watch(const rom_config_t *config) {
-    printf("constructing payload...\n");
+    debug("constructing payload...\n");
     
     unsigned char *payload_copy = malloc(sizeof(payload_watch));
     if (!payload_copy) {
@@ -87,7 +88,7 @@ static int construct_command_watch(irecv_client_t client,
                       unsigned char **result,
                       size_t *result_length) {
 
-    printf("constructing command...\n");
+    debug("constructing command...\n");
 
     if (*(uint32_t*)bootloader != ARM_RESET_VECTOR) {
         printf("provided bootloader doesn't seem to be an ARM image\n");
@@ -166,7 +167,7 @@ int dfu_boot_watch(irecv_client_t client, const uint8_t *bootloader, size_t boot
         goto out;
     }
 
-    printf("requesting DFU abort\n");
+    debug("requesting DFU abort\n");
 
     irecv_usb_control_transfer(client, 0x21, 4, 0, 0, NULL, 0, USB_SMALL_TIMEOUT);
 
@@ -201,7 +202,7 @@ typedef struct __attribute__((packed)) {
 } payload_offsets_t;
 
 static unsigned char *construct_payload(const rom_config_t *config, off_t bootloader_offset, size_t bootloader_length) {
-    printf("constructing payload...\n");
+    debug("constructing payload...\n");
     
     unsigned char *payload_copy = malloc(sizeof(payload));
     if (!payload_copy) {
@@ -249,7 +250,7 @@ static int construct_command(irecv_client_t client,
                       unsigned char **result,
                       size_t *result_length) {
 
-    printf("constructing command...\n");
+    debug("constructing command...\n");
 
     if (*(uint32_t *)bootloader != ARM_RESET_VECTOR) {
         printf("provided bootloader doesn't seem to be an ARM image\n");

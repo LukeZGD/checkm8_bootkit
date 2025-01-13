@@ -28,6 +28,7 @@ SOURCES = \
 	src/batch.c \
 	src/utils.c \
 	lilirecovery/lilirecovery.c \
+	src/libbootkit/log.c \
 	src/libbootkit/boot.c \
 	src/libbootkit/ops.c \
 	src/libbootkit/dfu.c \

@@ -22,12 +22,21 @@ You can run it on iOS as well (if you are lucky)
 ## Usage
 
 ```
-➜  checkm8_bootkit git:(full) ✗ build/checkm8_bootkit                                                                                                        
+➜  checkm8_bootkit git:(master) ✗ build/checkm8_bootkit
 usage: build/checkm8_bootkit VERB [args]
+
 where VERB is one of the following:
         boot <bootloader>
         kbag <kbag>
         demote
+        batch <input> <output>
+
+for batch KBAG processing, you must input a text file in following format:
+        FIRMWARE0 FILE0 KBAG
+        ...
+        FIRMWAREn FILEn KBAG
+
+in return you'll get the same structure, but with IV+key pair appended to each entry
 
 supported platforms:
         s5l8747x, s5l8940x, s5l8942x, s5l8945x, s5l8947x, s5l8950x, s5l8955x, s7002, t8002, t8004
@@ -35,6 +44,8 @@ supported platforms:
 
 * `bootloader` must be a path to raw unpacked **iBoot** image (usually you'd want to load **iBSS**)
 * `kbag` must be a hex string
+
+Set **LIBBOOTKIT_DEBUG** environment variable to 1 to enable verbose logging
 
 ## Building
 

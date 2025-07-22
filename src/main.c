@@ -21,12 +21,18 @@ void print_usage(const char *program_name) {
     printf("\tdemote\n");
     printf("\tbatch <input> <output>\n");
 
-    printf("\nfor batch KBAG processing, you must input a text file in following format:\n");
-    printf("\tFIRMWARE0 FILE0 KBAG\n");
-    printf("\t...\n");
-    printf("\tFIRMWAREn FILEn KBAG\n");
+    printf("\nfor batch KBAG processing, you must input a JSON in the following format:\n");
+    printf("\t[\n");
+    printf("\t\t{\n");
+    printf("\t\t\t\"kbag\": \"KBAG\",\n");
+    printf("\t\t\t\"metadata_1\": \"METADATA\",\n");
+    printf("\t\t\t...\n");
+    printf("\t\t\t\"metadata_n\": \"METADATA\"\n");
+    printf("\t\t},\n");
+    printf("\t\t...\n");
+    printf("\t]\n");
 
-    printf("\nin return you'll get the same structure, but with IV+key pair appended to each entry\n");
+    printf("\nin return you'll get the same structure, but with \"key\" appended to each entry\n");
 
     printf("\nsupported platforms:\n\t");
 
@@ -86,8 +92,7 @@ int main(int argc, char *argv[]) {
 
     char *batch_input_buffer = NULL;
     size_t batch_input_size = 0;
-    struct batch_entry *batch_entries = NULL;
-    int batch_entry_count = 0;
+    void *batch_ctx = NULL;
 
     uint8_t kbag[KBAG_LEN_256] = { 0 };
     size_t kbag_len = 0;
@@ -193,10 +198,9 @@ int main(int argc, char *argv[]) {
         close(fd);
         fd = -1;
 
-        if (batch_parse(batch_input_buffer, &batch_entries, &batch_entry_count) != 0) {
+        if (batch_start(batch_input_buffer, batch_input_size, &batch_ctx) != 0) {
             goto out;
         }
-
     }
 
     if (verb == VERB_NONE) {
@@ -262,56 +266,44 @@ int main(int argc, char *argv[]) {
         }
 
         case VERB_BATCH: {
-            out_fd = open(argv[3], O_WRONLY | O_CREAT, 0644);
-            if (out_fd < 0) {
-                printf("failed to create output file\n");
-                goto out;
-            }
-
             printf("decrypting KBAG batch...\n");
 
-            for (int i = 0; i < batch_entry_count; i++) {
-                struct batch_entry *curr = &batch_entries[i];
-
+            int idx = 0;
+            int kbag_count = batch_get_count(batch_ctx);
+            for (int idx = 0; idx < kbag_count; idx++) {
                 uint8_t kbag[KBAG_LEN_256] = { 0 };
-                int kbag_len = curr->kbag_len;
+                size_t kbag_len = 0;
 
-                memcpy(kbag, curr->kbag, kbag_len);
+                int batch_ret = batch_get_kbag(batch_ctx, idx, kbag, &kbag_len);
+                if (batch_ret != 0) {
+                    goto out;
+                }
 
                 if (!kbag_len_validate(kbag_len, config->cpid)) {
                     goto out;
                 }
 
-                write(out_fd, curr->firmware, strlen(curr->firmware));
-                write(out_fd, " ", 1);
-                write(out_fd, curr->file, strlen(curr->file));
-                write(out_fd, " ", 1);
-
-                char kbag_str[KBAG_LEN_256 * 2 + 1] = { 0 };
-                hex2str(kbag_str, kbag_len, curr->kbag);
-
-                write(out_fd, kbag_str, kbag_len * 2);
-                write(out_fd, " ", 1);
-
-                ret = aes_op(client, config, kbag, kbag_len);
-                if (ret != 0) {
+                int aes_ret = aes_op(client, config, kbag, kbag_len);
+                if (aes_ret != 0) {
                     goto out;
                 }
 
-                char key_str[KBAG_LEN_256 * 2 + 1] = { 0 };
-                hex2str(key_str, kbag_len, kbag);
-
-                write(out_fd, key_str, kbag_len * 2);
-                write(out_fd, "\n", 1);
+                batch_set_key(batch_ctx, idx, kbag, kbag_len);
 
                 if (!libbootkit_debug_enabled) {
-                    printf("\rdecrypting: %d/%d", i + 1, batch_entry_count);
+                    printf("\rdecrypting: %d/%d", idx + 1, kbag_count);
                 }
             }
 
             if (!libbootkit_debug_enabled) {
                 printf("\n");
             }
+
+            if (batch_write(batch_ctx, argv[3]) != 0) {
+                goto out;
+            }
+
+            ret = 0;
         }
     }
 
@@ -332,8 +324,8 @@ out:
         free(batch_input_buffer);
     }
 
-    if (batch_entries) {
-        free(batch_entries);
+    if (batch_ctx) {
+        batch_quiesce(&batch_ctx);
     }
 
     if (client) {

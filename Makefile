@@ -16,7 +16,7 @@ MAC_CFLAGS = -mmacosx-version-min=10.8
 CFLAGS = -O3
 CFLAGS += -Ililirecovery
 
-LDFLAGS = -framework IOKit -framework CoreFoundation
+LDFLAGS = -framework IOKit -framework CoreFoundation -framework Foundation
 
 ARM_CC = xcrun -sdk iphoneos clang -arch armv7
 VMACHO = vmacho
@@ -25,7 +25,7 @@ BUILD_PATH = build
 
 SOURCES = \
 	src/main.c \
-	src/batch.c \
+	src/batch.m \
 	src/utils.c \
 	lilirecovery/lilirecovery.c \
 	src/libbootkit/log.c \

@@ -1,18 +1,15 @@
 #ifndef BATCH_H
 #define BATCH_H
 
-#include "libbootkit/ops.h"
+#include "stddef.h"
+#include "stdint.h"
 
-#define FIRMWARE_NAME_MAX_LEN   128
-#define FILE_NAME_MAX_LEN       64
+int batch_start(void *input, size_t size, void **ctx);
+int batch_write(void *ctx, const char *path);
+void batch_quiesce(void **ctx);
 
-struct batch_entry {
-    char firmware[FIRMWARE_NAME_MAX_LEN + 1];
-    char file[FILE_NAME_MAX_LEN + 1];
-    uint8_t kbag[KBAG_LEN_256];
-    int kbag_len;
-};
-
-int batch_parse(char *input, struct batch_entry **output, int *count);
+int batch_get_count(void *ctx);
+int batch_get_kbag(void *ctx, int idx, uint8_t *kbag, size_t *len);
+int batch_set_key(void *ctx, int idx, uint8_t *kbag, size_t len);
 
 #endif

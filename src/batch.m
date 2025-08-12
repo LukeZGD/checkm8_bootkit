@@ -13,7 +13,7 @@ int batch_start(void *input, size_t size, void **ctx) {
 
     *ctx = kbags;
 
-    return 0;;
+    return 0;
 }
 
 int batch_get_count(void *ctx) {

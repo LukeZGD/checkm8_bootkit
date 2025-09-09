@@ -5,9 +5,15 @@ IOS_CODESIGN = codesign
 IOS_ENT = ent.plist
 
 MAC_ARCH = -arch x86_64 -arch arm64
-IOS_ARCH = -arch armv7 -arch arm64
 
-IOS_CFLAGS = -miphoneos-version-min=6.0
+ifeq ($(WITH_ARMV7),1)
+	IOS_ARCH = -arch armv7 -arch arm64
+	IOS_CFLAGS = -miphoneos-version-min=6.0
+else
+	IOS_ARCH = -arch arm64
+	IOS_CFLAGS = -miphoneos-version-min=7.0
+endif
+
 IOS_CFLAGS += -Iinclude
 IOS_IOKIT_LINK = ln -fsh $(shell xcrun --sdk macosx --show-sdk-path)/System/Library/Frameworks/IOKit.framework/Versions/Current/Headers ./include/IOKit
 

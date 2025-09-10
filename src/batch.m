@@ -3,7 +3,7 @@
 #import "batch.h"
 #import "utils.h"
 
-int batch_start(void *input, size_t size, void **ctx) {
+int batch_init(void *input, size_t size, void **ctx) {
     NSError *err = nil;
     NSArray *kbags = [NSJSONSerialization JSONObjectWithData:[NSData dataWithBytes:input length:size] options:NSJSONReadingMutableContainers error:&err];
     if (err) {
@@ -68,6 +68,6 @@ int batch_write(void *ctx, const char *path) {
 }
 
 void batch_quiesce(void **ctx) {
-    [(NSArray *)*ctx dealloc];
+    [(NSArray *)*ctx release];
     *ctx = NULL;
 }

@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
         close(fd);
         fd = -1;
 
-        if (batch_start(batch_input_buffer, batch_input_size, &batch_ctx) != 0) {
+        if (batch_init(batch_input_buffer, batch_input_size, &batch_ctx) != 0) {
             goto out;
         }
     }

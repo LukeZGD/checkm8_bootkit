@@ -4,7 +4,7 @@
 #include "stddef.h"
 #include "stdint.h"
 
-int batch_start(void *input, size_t size, void **ctx);
+int batch_init(void *input, size_t size, void **ctx);
 int batch_write(void *ctx, const char *path);
 void batch_quiesce(void **ctx);
 

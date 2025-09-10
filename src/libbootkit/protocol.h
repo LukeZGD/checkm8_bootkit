@@ -32,7 +32,7 @@ typedef struct __attribute__((packed)) {
 int read32(irecv_client_t client, const rom_config_t *config, uint32_t address, uint32_t *dest);
 int write32(irecv_client_t client, const rom_config_t *config, uint32_t address, uint32_t value);
 
-#define MAX_ARGS 8
+#define MAX_ARGS        8
 #define AUX_DATA_START  (sizeof(usb_command_t) + sizeof(uint32_t) * MAX_ARGS)
 #define MAX_OUTPUT_LEN  0x400
 

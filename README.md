@@ -31,12 +31,18 @@ where VERB is one of the following:
         demote
         batch <input> <output>
 
-for batch KBAG processing, you must input a text file in following format:
-        FIRMWARE0 FILE0 KBAG
-        ...
-        FIRMWAREn FILEn KBAG
+for batch KBAG processing, you must input a JSON in the following format:
+        [
+                {
+                        "kbag": "KBAG",
+                        "metadata_1": "METADATA",
+                        ...
+                        "metadata_n": "METADATA"
+                },
+                ...
+        ]
 
-in return you'll get the same structure, but with IV+key pair appended to each entry
+in return you'll get the same structure, but with "key" appended to each entry
 
 supported platforms:
         s5l8747x, s5l8940x, s5l8942x, s5l8945x, s5l8947x, s5l8950x, s5l8955x, s7002, t8002, t8004

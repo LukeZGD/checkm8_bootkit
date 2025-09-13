@@ -72,3 +72,5 @@ Then just use `make`:
         building checkm8_bootkit for iOS
 %%%%% done building
 ```
+
+Add `WITH_ARMV7=1` to the invocation to build armv7 iOS version as well (broken since Xcode 16)

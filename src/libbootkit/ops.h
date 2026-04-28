@@ -2,7 +2,7 @@
 #define ops_H
 
 #include <stdbool.h>
-#include <lilirecovery.h>
+#include <libirecovery.h>
 #include "config.h"
 
 int demote_op(irecv_client_t client, const rom_config_t *config, bool demote);

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <lilirecovery.h>
+#include <libirecovery.h>
 
 #include "log.h"
 #include "ops.h"

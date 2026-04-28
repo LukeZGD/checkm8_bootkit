@@ -2,7 +2,7 @@
 #define dfu_H
 
 #include <stdbool.h>
-#include <lilirecovery.h>
+#include <libirecovery.h>
 
 #define MAX_PACKET_SIZE     0x800
 #define USB_SMALL_TIMEOUT   100

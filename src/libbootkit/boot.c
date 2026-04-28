@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <lilirecovery.h>
+#include <libirecovery.h>
 
 #include "log.h"
 #include "dfu.h"

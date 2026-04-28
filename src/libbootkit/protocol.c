@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <lilirecovery.h>
+#include <libirecovery.h>
 
 #include "log.h"
 #include "config.h"
@@ -34,7 +34,7 @@ int validate_device(irecv_client_t client) {
         return -1;
     }
 
-    if (!strstr(info->serial_string, "PWND:[checkm8]")) {
+    if (!strstr(info->serial_string, "PWND:[")) {
         printf("non-pwned-DFU device found\n");
         return -1;
     }
